@@ -120,7 +120,7 @@ decompress xs
   | S.null xs = Just S.empty
   | otherwise =
       -- Get the length of the uncompressed buffer and do our thing
-      either (const Nothing) (unsafePerformIO . go) $ runGet unformat xs
+      either (const Nothing) (unsafePerformIO . go) $ runGet (unformat (S.length xs)) xs
   where go (l, str) =
           U.unsafeUseAsCString str $ \cstr -> do
             out <- SI.createAndTrim l $ \p -> do
@@ -166,13 +166,14 @@ compressor f xs = unsafePerformIO $ do
 format :: Word32 -> Putter S.ByteString
 format l xs = do
   putWord32le l
-  putWord32le (fromIntegral $ S.length xs)
+--  putWord32le (fromIntegral $ S.length xs)
   putByteString xs
 
 -- Gets a ByteString and it's length from the compressed format.
-unformat :: Get (Int, S.ByteString)
-unformat =  (,) <$> (fromIntegral <$> getWord32le)
-                <*> (fromIntegral <$> getWord32le >>= getByteString)
+unformat :: Int -> Get (Int, S.ByteString)
+unformat l =  do
+  (,) <$> (fromIntegral <$> getWord32le)
+      <*> (getByteString (l - 4))
 
 
 
